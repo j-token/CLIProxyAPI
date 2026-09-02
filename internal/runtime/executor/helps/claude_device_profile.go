@@ -212,10 +212,18 @@ func shouldUpgradeClaudeDeviceProfile(candidate, current ClaudeDeviceProfile) bo
 	return candidate.version.Compare(current.version) > 0
 }
 
+// plausibleClaudeCLIVersion reports whether a native Claude Code client version
+// may be forwarded upstream as-is: the measured baseline or any newer release.
+// A newer client already sends the request shape its own version negotiates, so
+// re-labeling it as the older baseline only trips upstream version gates (for
+// example models that require Claude Code 2.1.251 or newer). Older clients are
+// still cloaked to the baseline.
 func plausibleClaudeCLIVersion(candidate, baseline claudeCLIVersion) bool {
-	return candidate.Compare(baseline) == 0
+	return candidate.Compare(baseline) >= 0
 }
 
+// meetsClaudeDeviceProfileBaseline keeps stabilized device profiles pinned to the
+// exact measured software tuple; only the passthrough path accepts newer clients.
 func meetsClaudeDeviceProfileBaseline(candidate, baseline ClaudeDeviceProfile) bool {
 	if candidate.UserAgent == "" || !candidate.hasVersion {
 		return false
@@ -223,7 +231,7 @@ func meetsClaudeDeviceProfileBaseline(candidate, baseline ClaudeDeviceProfile) b
 	if baseline.UserAgent == "" || !baseline.hasVersion {
 		return false
 	}
-	return plausibleClaudeCLIVersion(candidate.version, baseline.version) &&
+	return candidate.version.Compare(baseline.version) == 0 &&
 		candidate.PackageVersion == baseline.PackageVersion &&
 		candidate.RuntimeVersion == baseline.RuntimeVersion
 }
@@ -614,11 +622,14 @@ func ApplyClaudeLegacyDeviceHeaders(r *http.Request, ginHeaders http.Header, cfg
 	}
 
 	if confirmedClaudeCode {
-		miscEnsure("X-Stainless-Runtime-Version", profile.RuntimeVersion, func(value string) bool { return value == profile.RuntimeVersion })
-		miscEnsure("X-Stainless-Package-Version", profile.PackageVersion, func(value string) bool { return value == profile.PackageVersion })
-		miscEnsure("X-Stainless-Os", mapStainlessOS(), nil)
-		miscEnsure("X-Stainless-Arch", mapStainlessArch(), nil)
 		if clientUA := strings.TrimSpace(ginHeaders.Get("User-Agent")); plausibleClaudeCodeUserAgent(clientUA, cfg) {
+			// A confirmed native client at or above the baseline keeps its own
+			// software tuple: the SDK and runtime versions belong to the CLI
+			// version that produced the request shape being forwarded.
+			miscEnsure("X-Stainless-Runtime-Version", profile.RuntimeVersion, claudeRuntimeVersionPattern.MatchString)
+			miscEnsure("X-Stainless-Package-Version", profile.PackageVersion, claudePackageVersionPattern.MatchString)
+			miscEnsure("X-Stainless-Os", mapStainlessOS(), nil)
+			miscEnsure("X-Stainless-Arch", mapStainlessArch(), nil)
 			r.Header.Set("User-Agent", clientUA)
 			return
 		}

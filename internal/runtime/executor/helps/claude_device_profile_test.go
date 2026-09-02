@@ -132,9 +132,9 @@ func TestApplyClaudeLegacyDeviceHeadersReplacesInvalidNativeSoftwareSignals(t *t
 	if errRequest != nil {
 		t.Fatal(errRequest)
 	}
-	incoming := claudeDeviceHeaders("claude-cli/999.0.0 (external, cli)")
-	incoming.Set("X-Stainless-Package-Version", "999.0.0")
-	incoming.Set("X-Stainless-Runtime-Version", "v999.0.0")
+	incoming := claudeDeviceHeaders("claude-cli/2.1.100 (external, cli)")
+	incoming.Set("X-Stainless-Package-Version", "0.80.0")
+	incoming.Set("X-Stainless-Runtime-Version", "v24.0.0")
 
 	ApplyClaudeLegacyDeviceHeaders(request, incoming, nil, true)
 
@@ -147,6 +147,51 @@ func TestApplyClaudeLegacyDeviceHeadersReplacesInvalidNativeSoftwareSignals(t *t
 	}
 	if got := request.Header.Get("X-Stainless-Runtime-Version"); got != baseline.RuntimeVersion {
 		t.Fatalf("X-Stainless-Runtime-Version = %q, want %q", got, baseline.RuntimeVersion)
+	}
+}
+
+func TestApplyClaudeLegacyDeviceHeadersForwardsNewerConfirmedClient(t *testing.T) {
+	request, errRequest := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", nil)
+	if errRequest != nil {
+		t.Fatal(errRequest)
+	}
+	incoming := claudeDeviceHeaders("claude-cli/2.1.258 (external, sdk-cli)")
+	incoming.Set("X-Stainless-Package-Version", "0.112.1")
+	incoming.Set("X-Stainless-Runtime-Version", "v26.3.0")
+
+	ApplyClaudeLegacyDeviceHeaders(request, incoming, nil, true)
+
+	if got := request.Header.Get("User-Agent"); got != "claude-cli/2.1.258 (external, sdk-cli)" {
+		t.Fatalf("User-Agent = %q, want newer native client forwarded", got)
+	}
+	if got := request.Header.Get("X-Stainless-Package-Version"); got != "0.112.1" {
+		t.Fatalf("X-Stainless-Package-Version = %q, want client value forwarded", got)
+	}
+	if got := request.Header.Get("X-Stainless-Runtime-Version"); got != "v26.3.0" {
+		t.Fatalf("X-Stainless-Runtime-Version = %q, want client value forwarded", got)
+	}
+}
+
+func TestApplyClaudeLegacyDeviceHeadersReplacesMalformedSoftwareTupleOfNewerClient(t *testing.T) {
+	request, errRequest := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", nil)
+	if errRequest != nil {
+		t.Fatal(errRequest)
+	}
+	incoming := claudeDeviceHeaders("claude-cli/2.1.258 (external, cli)")
+	incoming.Set("X-Stainless-Package-Version", "not-a-version")
+	incoming.Set("X-Stainless-Runtime-Version", "26.3.0")
+
+	ApplyClaudeLegacyDeviceHeaders(request, incoming, nil, true)
+
+	baseline := defaultClaudeDeviceProfile(nil)
+	if got := request.Header.Get("User-Agent"); got != "claude-cli/2.1.258 (external, cli)" {
+		t.Fatalf("User-Agent = %q, want newer native client forwarded", got)
+	}
+	if got := request.Header.Get("X-Stainless-Package-Version"); got != baseline.PackageVersion {
+		t.Fatalf("X-Stainless-Package-Version = %q, want baseline %q", got, baseline.PackageVersion)
+	}
+	if got := request.Header.Get("X-Stainless-Runtime-Version"); got != baseline.RuntimeVersion {
+		t.Fatalf("X-Stainless-Runtime-Version = %q, want baseline %q", got, baseline.RuntimeVersion)
 	}
 }
 
