@@ -102,6 +102,46 @@ func (cfg *Config) SanitizeOAuthModelAlias() {
 	cfg.OAuthModelAlias = out
 }
 
+// SanitizeOAuthCustomModels normalizes global OAuth custom model declarations.
+// It trims whitespace, normalizes channel keys to lower-case, drops entries without
+// a name, and keeps the first entry for each model name within a channel.
+func (cfg *Config) SanitizeOAuthCustomModels() {
+	if cfg == nil || len(cfg.OAuthCustomModels) == 0 {
+		return
+	}
+	out := make(map[string][]OAuthCustomModel, len(cfg.OAuthCustomModels))
+	for rawChannel, entries := range cfg.OAuthCustomModels {
+		channel := strings.ToLower(strings.TrimSpace(rawChannel))
+		if channel == "" || len(entries) == 0 {
+			continue
+		}
+		seen := make(map[string]struct{}, len(entries))
+		clean := make([]OAuthCustomModel, 0, len(entries))
+		for _, entry := range entries {
+			name := strings.TrimSpace(entry.Name)
+			if name == "" {
+				continue
+			}
+			key := strings.ToLower(name)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			clean = append(clean, OAuthCustomModel{
+				Name:             name,
+				DisplayName:      strings.TrimSpace(entry.DisplayName),
+				Template:         strings.TrimSpace(entry.Template),
+				MaxContextLength: entry.MaxContextLength,
+				Thinking:         entry.Thinking,
+			})
+		}
+		if len(clean) > 0 {
+			out[channel] = clean
+		}
+	}
+	cfg.OAuthCustomModels = out
+}
+
 // SanitizeOAuthRequestScopedErrors normalizes and validates global OAuth request-scoped error rules.
 // It trims whitespace, normalizes channel keys to lower-case, validates status/action, and drops invalid rules.
 func (cfg *Config) SanitizeOAuthRequestScopedErrors() {

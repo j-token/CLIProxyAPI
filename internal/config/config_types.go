@@ -262,6 +262,28 @@ type OAuthModelAlias struct {
 	ForceMapping bool `yaml:"force-mapping,omitempty" json:"force-mapping,omitempty"`
 }
 
+// OAuthCustomModel declares an additional model for an OAuth/file-backed auth
+// channel that is missing from the built-in catalog. The entry is appended to the
+// channel's model list so clients can request the upstream slug directly.
+type OAuthCustomModel struct {
+	// Name is the upstream model slug sent to the provider as-is.
+	Name string `yaml:"name" json:"name"`
+
+	// DisplayName is the optional human-readable name shown in model catalogs.
+	DisplayName string `yaml:"display-name,omitempty" json:"display-name,omitempty"`
+
+	// Template is an optional catalog model whose capability metadata (context
+	// length, thinking levels, modalities, headers) is copied to the custom model.
+	// When empty, the catalog model sharing the longest name prefix is used.
+	Template string `yaml:"template,omitempty" json:"template,omitempty"`
+
+	// MaxContextLength overrides the context window advertised for this model.
+	MaxContextLength int `yaml:"max-context-length,omitempty" json:"max-context-length,omitempty"`
+
+	// Thinking overrides the thinking/reasoning capability for this model.
+	Thinking *registry.ThinkingSupport `yaml:"thinking,omitempty" json:"thinking,omitempty"`
+}
+
 // PayloadConfig defines default and override parameter rules applied to provider payloads.
 type PayloadConfig struct {
 	// Default defines rules that only set parameters when they are missing in the payload.

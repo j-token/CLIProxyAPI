@@ -163,6 +163,12 @@ type Config struct {
 	// gemini-api-key, interactions-api-key, codex-api-key, xai-api-key, claude-api-key, openai-compatibility, and vertex-api-key.
 	OAuthModelAlias map[string][]OAuthModelAlias `yaml:"oauth-model-alias,omitempty" json:"oauth-model-alias,omitempty"`
 
+	// OAuthCustomModels declares extra models per OAuth/file-backed auth channel that are
+	// missing from the built-in catalog (for example a slug the upstream already serves but
+	// the catalog has not picked up yet). Supported channels match oauth-model-alias.
+	// Entries are appended before oauth-model-alias is applied, so aliases may reference them.
+	OAuthCustomModels map[string][]OAuthCustomModel `yaml:"oauth-custom-models,omitempty" json:"oauth-custom-models,omitempty"`
+
 	// OAuthRequestScopedErrors defines per-provider request-scoped error rules applied to OAuth/file-backed auth entries.
 	// Supported channels include: vertex, aistudio, antigravity, claude, codex, kimi, xai, and OAuth plugin provider keys.
 	//

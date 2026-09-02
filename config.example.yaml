@@ -739,6 +739,30 @@ nonstream-keepalive-interval: 0
 #     - name: "sample-model-latest"
 #       alias: "sample-latest"
 
+# Global OAuth custom models (per channel)
+# Declare upstream model slugs that the provider already serves but the built-in catalog
+# does not list yet (for example a newly released model). Each entry is appended to the
+# channel's model list for every OAuth/file-backed credential, listed in /v1/models, and
+# routed upstream with the slug unchanged. Names already present in the catalog are ignored.
+# Supported channels match oauth-model-alias; entries are added before aliases are applied,
+# so oauth-model-alias may reference a custom model name.
+# Optional per-entry fields:
+#   display-name: "Model Name"    # human-readable catalog name
+#   template: "catalog-model-id"  # copy context length, thinking levels and modalities from this catalog model
+#                                 # (default: the catalog model sharing the longest name prefix)
+#   max-context-length: 1000000   # override the advertised context window
+#   thinking:                     # override the thinking/reasoning capability
+#     levels: ["low", "medium", "high", "xhigh", "max"]
+# oauth-custom-models:
+#   claude:
+#     - name: "claude-fable-5-1"
+#       display-name: "Claude Fable 5.1"
+#       template: "claude-fable-5"
+#   codex:
+#     - name: "gpt-daybreak-blue-latest"
+#       display-name: "Daybreak Blue"
+#       template: "gpt-5.6-sol"
+
 # OAuth provider excluded models
 # oauth-excluded-models:
 #   vertex:
